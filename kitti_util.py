@@ -49,7 +49,7 @@ class Object2d(object):
 
 
 class Object3d(object):
-    """ 3d object label """
+    """ 3d object label   only for tracking format"""
 
     def __init__(self, label_file_line):
         data = label_file_line.split(" ")
@@ -76,6 +76,134 @@ class Object3d(object):
         self.l = data[10]  # box length (in meters)
         self.t = (data[11], data[12], data[13])  # location (x,y,z) in camera coord.
         self.ry = data[14]  # yaw angle (around Y-axis in camera coordinates) [-pi..pi]
+
+    def estimate_diffculty(self):
+        """ Function that estimate difficulty to detect the object as defined in kitti website"""
+        # height of the bounding box
+        bb_height = np.abs(self.xmax - self.xmin)
+
+        if bb_height >= 40 and self.occlusion == 0 and self.truncation <= 0.15:
+            return "Easy"
+        elif bb_height >= 25 and self.occlusion in [0, 1] and self.truncation <= 0.30:
+            return "Moderate"
+        elif (
+            bb_height >= 25 and self.occlusion in [0, 1, 2] and self.truncation <= 0.50
+        ):
+            return "Hard"
+        else:
+            return "Unknown"
+
+    def print_object(self):
+        print(
+            "Type, truncation, occlusion, alpha: %s, %d, %d, %f"
+            % (self.type, self.truncation, self.occlusion, self.alpha)
+        )
+        print(
+            "2d bbox (x0,y0,x1,y1): %f, %f, %f, %f"
+            % (self.xmin, self.ymin, self.xmax, self.ymax)
+        )
+        print("3d bbox h,w,l: %f, %f, %f" % (self.h, self.w, self.l))
+        print(
+            "3d bbox location, ry: (%f, %f, %f), %f"
+            % (self.t[0], self.t[1], self.t[2], self.ry)
+        )
+        print("Difficulty of estimation: {}".format(self.estimate_diffculty()))
+
+class Object_result_3d(object):
+    """ 3d object detection results   only for tracking format"""
+
+    def __init__(self, label_file_line):
+        det_id2str = {1: "Pedestrian", 2: "Car", 3: "Cyclist"}
+        data = label_file_line.split(",")
+        data[0:] = [float(x) for x in data[0:]]
+
+        # extract label, truncation, occlusion
+        self.image_id=int(data[0]) #frameid   int类型
+        self.type = det_id2str[data[1]]  # 'Car'=2, 'Pedestrian', ...
+
+        # self.truncation = data[1]  # truncated pixel ratio [0..1]
+        # self.occlusion = int(
+        #     data[2]
+        # )  # 0=visible, 1=partly occluded, 2=fully occluded, 3=unknown
+
+
+        # extract 2d bounding box in 0-based coordinates
+        self.xmin = data[2]  # left
+        self.ymin = data[3]  # top
+        self.xmax = data[4]  # right
+        self.ymax = data[5]  # bottom
+        self.box2d = np.array([self.xmin, self.ymin, self.xmax, self.ymax])
+        self.score=data[6]
+        # extract 3d bounding box information
+        self.h = data[7]  # box height
+        self.w = data[8]  # box width
+        self.l = data[9]  # box length (in meters)
+        self.t = (data[10], data[11], data[12])  # location (x,y,z) in camera coord.
+        self.ry = data[13]  # yaw angle (around Y-axis in camera coordinates) [-pi..pi]
+        self.alpha = data[14]  # object observation angle [-pi..pi]
+
+    def estimate_diffculty(self):
+        """ Function that estimate difficulty to detect the object as defined in kitti website"""
+        # height of the bounding box
+        bb_height = np.abs(self.xmax - self.xmin)
+
+        if bb_height >= 40 and self.occlusion == 0 and self.truncation <= 0.15:
+            return "Easy"
+        elif bb_height >= 25 and self.occlusion in [0, 1] and self.truncation <= 0.30:
+            return "Moderate"
+        elif (
+            bb_height >= 25 and self.occlusion in [0, 1, 2] and self.truncation <= 0.50
+        ):
+            return "Hard"
+        else:
+            return "Unknown"
+
+    def print_object(self):
+        print(
+            "Type, truncation, occlusion, alpha: %s, %d, %d, %f"
+            % (self.type, self.truncation, self.occlusion, self.alpha)
+        )
+        print(
+            "2d bbox (x0,y0,x1,y1): %f, %f, %f, %f"
+            % (self.xmin, self.ymin, self.xmax, self.ymax)
+        )
+        print("3d bbox h,w,l: %f, %f, %f" % (self.h, self.w, self.l))
+        print(
+            "3d bbox location, ry: (%f, %f, %f), %f"
+            % (self.t[0], self.t[1], self.t[2], self.ry)
+        )
+        print("Difficulty of estimation: {}".format(self.estimate_diffculty()))
+
+class tracking3d(object):
+    """ 3d object tracking label   only for kittitracking format"""
+
+    def __init__(self, label_file_line):
+        data = label_file_line.split(" ")
+        data[5:] = [float(x) for x in data[5:]]
+
+        # extract label, truncation, occlusion
+        self.image_id = int(data[0])# framid
+        self.trackid=int(data[1])#trackid
+        self.type = data[2]  # 'Car', 'Pedestrian', ...
+        self.truncation = data[3]  # truncated pixel ratio [0..1]
+        self.occlusion = int(
+            data[4]
+        )  # 0=visible, 1=partly occluded, 2=fully occluded, 3=unknown
+        self.alpha = data[5]  # object observation angle [-pi..pi]
+
+        # extract 2d bounding box in 0-based coordinates
+        self.xmin = data[6]  # left
+        self.ymin = data[7]  # top
+        self.xmax = data[8]  # right
+        self.ymax = data[9]  # bottom
+        self.box2d = np.array([self.xmin, self.ymin, self.xmax, self.ymax])
+
+        # extract 3d bounding box information
+        self.h = data[10]  # box height
+        self.w = data[11]  # box width
+        self.l = data[12]  # box length (in meters)
+        self.t = (data[13], data[14], data[15])  # location (x,y,z) in camera coord.
+        self.ry = data[16]  # yaw angle (around Y-axis in camera coordinates) [-pi..pi]
 
     def estimate_diffculty(self):
         """ Function that estimate difficulty to detect the object as defined in kitti website"""
@@ -712,6 +840,7 @@ def draw_box3d_on_top(
     scores=None,
     text_lables=[],
     is_gt=False,
+    is_track=False
 ):
 
     # if scores is not None and scores.shape[0] >0:
@@ -738,9 +867,15 @@ def draw_box3d_on_top(
         if is_gt:
             color = (0, 255, 0)
             startx = 5
+        elif is_track:
+            #color = heat_map_rgb(255, 250, scores[n]) if scores is not None else 250
+            color = (255, 250, 250 )
+            startx = 175
         else:
             color = heat_map_rgb(0.0, 1.0, scores[n]) if scores is not None else 255
             startx = 85
+
+
         cv2.line(img, (u0, v0), (u1, v1), color, thickness, cv2.LINE_AA)
         cv2.line(img, (u1, v1), (u2, v2), color, thickness, cv2.LINE_AA)
         cv2.line(img, (u2, v2), (u3, v3), color, thickness, cv2.LINE_AA)

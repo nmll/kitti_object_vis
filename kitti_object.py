@@ -1,7 +1,10 @@
 """ Helper class and functions for loading KITTI objects
 
-Author: Charles R. Qi
+raw Author: Charles R. Qi
 Date: September 2017
+
+modified by Yao Li
+Date: May 2020
 """
 from __future__ import print_function
 
@@ -9,12 +12,20 @@ import os
 import sys
 import numpy as np
 import cv2
+import linecache #读取指定行
+import time
+import matplotlib.pyplot as plt #仅用于延时，不知有用否
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, "mayavi"))
 import kitti_util as utils
 import argparse
+
+trackdirid=['0000','0001','0002','0003','0004','0005','0006','0007','0008','0009','0010','0011',
+            '0012','0013','0014','0015','0016','0017','0018','0019','0020','0021','0022',
+            '0023','0024','0025','0026','0027','0028']
+timeintervel=300   # every 50ms play recommanded
 
 try:
     raw_input  # Python 2
@@ -35,7 +46,8 @@ class kitti_object(object):
         self.split_dir = os.path.join(root_dir, split)
 
         if split == "training":
-            self.num_samples = 7481
+            #self.num_samples = 7481
+            self.num_samples = 8008  #tracking
         elif split == "testing":
             self.num_samples = 7518
         else:
@@ -63,29 +75,33 @@ class kitti_object(object):
         return self.num_samples
 
     def get_image(self, idx):
-        assert idx < self.num_samples
-        img_filename = os.path.join(self.image_dir, "%06d.png" % (idx))
+        #assert idx < self.num_samples #ly  下面的assert均为修改的
+        #img_filename = os.path.join(self.image_dir, "%06d.png" % (idx))
+        img_filename = os.path.join(self.image_dir, "%s.png" % (idx))
         return utils.load_image(img_filename)
 
     def get_lidar(self, idx, dtype=np.float64, n_vec=4):
-        assert idx < self.num_samples
-        lidar_filename = os.path.join(self.lidar_dir, "%06d.bin" % (idx))
+        #assert idx < self.num_samples #ly
+        #lidar_filename = os.path.join(self.lidar_dir, "%06d.bin" % (idx))
+        lidar_filename = os.path.join(self.lidar_dir, "%s.bin" % (idx))
         print(lidar_filename)
         return utils.load_velo_scan(lidar_filename, dtype, n_vec)
 
     def get_calibration(self, idx):
-        assert idx < self.num_samples
-        calib_filename = os.path.join(self.calib_dir, "%06d.txt" % (idx))
+        #assert idx < self.num_samples
+        calib_filename = os.path.join(self.calib_dir, "%s.txt" % (idx))
         return utils.Calibration(calib_filename)
 
     def get_label_objects(self, idx):
-        assert idx < self.num_samples and self.split == "training"
-        label_filename = os.path.join(self.label_dir, "%06d.txt" % (idx))
+        #assert idx < self.num_samples and self.split == "training"
+        #label_filename = os.path.join(self.label_dir, "%06d.txt" % (idx))
+        label_filename = os.path.join(self.label_dir, "%s.txt" % (idx))
         return utils.read_label(label_filename)
 
     def get_pred_objects(self, idx):
-        assert idx < self.num_samples
-        pred_filename = os.path.join(self.pred_dir, "%06d.txt" % (idx))
+        #assert idx < self.num_samples
+        idx=idx.spilt('-')#ly
+        pred_filename = os.path.join(self.pred_dir, "%s.txt" % (idx[0]))#ly
         is_exist = os.path.exists(pred_filename)
         if is_exist:
             return utils.read_label(pred_filename)
@@ -93,18 +109,18 @@ class kitti_object(object):
             return None
 
     def get_depth(self, idx):
-        assert idx < self.num_samples
-        img_filename = os.path.join(self.depth_dir, "%06d.png" % (idx))
+        #assert idx < self.num_samples
+        img_filename = os.path.join(self.depth_dir, "%s.png" % (idx))
         return utils.load_depth(img_filename)
 
     def get_depth_image(self, idx):
-        assert idx < self.num_samples
-        img_filename = os.path.join(self.depth_dir, "%06d.png" % (idx))
+        #assert idx < self.num_samples
+        img_filename = os.path.join(self.depth_dir, "%s.png" % (idx))
         return utils.load_depth(img_filename)
 
     def get_depth_pc(self, idx):
-        assert idx < self.num_samples
-        lidar_filename = os.path.join(self.depthpc_dir, "%06d.bin" % (idx))
+        #assert idx < self.num_samples
+        lidar_filename = os.path.join(self.depthpc_dir, "%s.bin" % (idx))
         is_exist = os.path.exists(lidar_filename)
         if is_exist:
             return utils.load_velo_scan(lidar_filename), is_exist
@@ -117,13 +133,13 @@ class kitti_object(object):
         pass
 
     def isexist_pred_objects(self, idx):
-        assert idx < self.num_samples and self.split == "training"
-        pred_filename = os.path.join(self.pred_dir, "%06d.txt" % (idx))
+        #assert idx < self.num_samples and self.split == "training"
+        pred_filename = os.path.join(self.pred_dir, "%s.txt" % (idx))
         return os.path.exists(pred_filename)
 
     def isexist_depth(self, idx):
-        assert idx < self.num_samples and self.split == "training"
-        depth_filename = os.path.join(self.depth_dir, "%06d.txt" % (idx))
+        #assert idx < self.num_samples and self.split == "training"
+        depth_filename = os.path.join(self.depth_dir, "%s.txt" % (idx))
         return os.path.exists(depth_filename)
 
 
@@ -182,23 +198,35 @@ def viz_kitti_video():
     return
 
 
-def show_image_with_boxes(img, objects, calib, show3d=True, depth=None):
+def show_image_with_boxes(img, objects=None, calib=None, show3d=True, depth=None,track_pred=None):
     """ Show image with 2D bounding boxes """
-    img1 = np.copy(img)  # for 2d bbox
-    img2 = np.copy(img)  # for 3d bbox
+    img1 = np.copy(img)  # for 3d detection bbox
+    img2 = np.copy(img)  # for 3d tracking bbox
     img3 = np.copy(img)  # for 3d bbox
-    for obj in objects:
-        if obj.type == "DontCare":
-            continue
-        cv2.rectangle(
-            img1,
-            (int(obj.xmin), int(obj.ymin)),
-            (int(obj.xmax), int(obj.ymax)),
-            (0, 255, 0),
-            2,
-        )
-        box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
-        img2 = utils.draw_projected_box3d(img2, box3d_pts_2d)
+    if objects is not None:
+        for obj in objects:
+            # if obj.type == "DontCare":
+            #     continue
+            # cv2.rectangle(
+            #     img1,
+            #     (int(obj.xmin), int(obj.ymin)),
+            #     (int(obj.xmax), int(obj.ymax)),
+            #     (0, 255, 0),
+            #     2,
+            # )
+            box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
+            img1 = utils.draw_projected_box3d(img1, box3d_pts_2d)
+    if track_pred is not None:# tracking results
+        for obj in track_pred:
+            box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
+            img2 = utils.draw_projected_box3d(img2, box3d_pts_2d)
+
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(img2,'trackid:%d'%obj.trackid, (int((obj.xmin+obj.xmax)/2.1), int(obj.ymin-10)), font, 0.5, (0, 255, 0), 1)
+                        #画trackid 绘制的文字，位置，字型，字体大小，文字颜色，线型
+
+
+
 
         # project
         # box3d_pts_3d_velo = calib.project_rect_to_velo(box3d_pts_3d)
@@ -206,13 +234,16 @@ def show_image_with_boxes(img, objects, calib, show3d=True, depth=None):
         # box3d_pts_32d = calib.project_velo_to_image(box3d_pts_3d_velo)
         # img3 = utils.draw_projected_box3d(img3, box3d_pts_32d)
     # print("img1:", img1.shape)
-    cv2.imshow("2dbox", img1)
+    #cv2.imshow("2dbox", img1)
+    cv2.namedWindow("detection results", cv2.WINDOW_FREERATIO)  # 可鼠标调节自适应比例
+    cv2.namedWindow("tracking results", cv2.WINDOW_FREERATIO)  # 可鼠标调节自适应比例
+    cv2.imshow("detection results", img1)
     # print("img3:",img3.shape)
     # Image.fromarray(img3).show()
-    show3d = True
-    if show3d:
+    #show3d = True
+    if show3d:# show tracking results
         # print("img2:",img2.shape)
-        cv2.imshow("3dbox", img2)
+        cv2.imshow("tracking results", img2)
     if depth is not None:
         cv2.imshow("depth", depth)
 
@@ -662,12 +693,13 @@ def show_lidar_on_image(pc_velo, img, calib, img_width, img_height):
     return img
 
 
-def show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred=None):
+def show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred=None,track_pred=None):
     """ top_view image"""
     # print('pc_velo shape: ',pc_velo.shape)
     top_view = utils.lidar_to_top(pc_velo)
     top_image = utils.draw_top_image(top_view)
     print("top_image:", top_image.shape)
+
     # gt
 
     def bbox3d(obj):
@@ -682,22 +714,54 @@ def show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred=None):
     top_image = utils.draw_box3d_on_top(
         top_image, gt, text_lables=lines, scores=None, thickness=1, is_gt=True
     )
-    # pred
+    #pred
     if objects_pred is not None:
         boxes3d = [bbox3d(obj) for obj in objects_pred if obj.type != "DontCare"]
         gt = np.array(boxes3d)
         lines = [obj.type for obj in objects_pred if obj.type != "DontCare"]
+
         top_image = utils.draw_box3d_on_top(
             top_image, gt, text_lables=lines, scores=None, thickness=1, is_gt=False
         )
+    #tracking result
+    if track_pred is not None:
+        boxes3d = [bbox3d(obj) for obj in track_pred if obj.type != "DontCare"]
+        gt = np.array(boxes3d)
+        lines = [obj.type for obj in track_pred if obj.type != "DontCare"]
+        top_image = utils.draw_box3d_on_top(
+            top_image, gt, text_lables=lines, scores=None, thickness=1, is_gt=False,is_track=True
+        )
 
-    cv2.imshow("top_image", top_image)
-
+    #cv2.namedWindow("top_image_bev", cv2.WINDOW_NORMAL)#窗口大小可变，左是窗口名称
+    cv2.namedWindow("top_image_bev", cv2.WINDOW_FREERATIO)#可鼠标调节自适应比例
+    #cv2.resizeWindow("top_image_bev", 640, 480)#ly
+    cv2.imshow("top_image_bev", top_image)
 
 def dataset_viz(root_dir, args):
     dataset = kitti_object(root_dir, split=args.split, args=args)
-    ## load 2d detection results
-    objects2ds = read_det_file("box2d.list")
+    ## load 2d detection results    or 3D results
+    #objects2ds = read_det_file("box2d.list")
+    imagedir = '0000'  # imagedir 第几组 default 0000
+    argdetectdir = 'saresult_val' #which detection result file name,default saresult_val
+    beginid={0000:0,1:154,2:601,3:834,4:978,5:1292,6:1589,7:1859,8:2659,9:3049,10:3852,11:4146,12:4519,13:4597,14:4937,15:5034,16:5419,17:5628,18:5773,19:6112,20:7171}
+
+    if args.group:
+        imagedir =  trackdirid[args.group] # imagedir 第几组
+    if args.detectdir:
+        argdetectdir=args.detectdir
+        assert os.path.exists("./results/%s/%s.txt"%(argdetectdir,imagedir))== True, 'detection dir does not exit!'
+        objects3ds = read_det_file("./results/%s/%s.txt"%(argdetectdir,imagedir),type='detection')#sassd 在tracking 数据集探测结果第imagedir组
+    else:
+        objects3ds=None
+    if args.show_tracking:#assign tracking result
+        if args.trackdir is None:
+            raise Exception("you need to assign --trackdir with your tarcking results!")
+        trackdir=args.trackdir
+        assert os.path.exists("./results/%s/data/%s.txt"%(trackdir,imagedir))==True,'tracking dir does not exit!'
+        track3ds = read_det_file("./results/%s/data/%s.txt"%(trackdir,imagedir),type='tracking')#sassd 在tracking 数据集tracking结果第imagedir组
+    else:
+        track3ds=None
+
 
     if args.show_lidar_with_depth:
         import mayavi.mlab as mlab
@@ -705,26 +769,54 @@ def dataset_viz(root_dir, args):
         fig = mlab.figure(
             figure=None, bgcolor=(0, 0, 0), fgcolor=None, engine=None, size=(1000, 500)
         )
-    for data_idx in range(len(dataset)):
+    print('all the framid number=%d' % len(dataset))#ly
+
+
+    for data_idx in range(beginid[int(imagedir)],len(dataset)):  #####测得en(dataset)为8008帧，trainging下所有帧
+        timemid=data_idx
+
         if args.ind > 0:
-            data_idx = args.ind
+            data_idx = args.ind  #从设定的那帧开始共8008帧
+        trainvalid=linecache.getline('./data/trainval.txt', data_idx+1)#ly
+
+        data_idx=trainvalid.replace('\n','')  #为了索引相关的点云和图像文件
+        frameid = data_idx.split('-')#used for spilt frameid
         # Load data from dataset
         if args.split == "training":
-            objects = dataset.get_label_objects(data_idx)
+            objects = dataset.get_label_objects(data_idx) #read from relevent label
         else:
             objects = []
-        objects2d = objects2ds[data_idx]
+        #objects2d = objects2ds[data_idx]
+        if int(frameid[1]) not in objects3ds.keys() or int(frameid[0]) != int(imagedir):#不在当前组不用加载结果
+            objects3d=None
+        else:
+            objects3d = objects3ds[int(frameid[1])] # 获得相应帧3ddetection的结果
+
+        if int(frameid[1]) not in track3ds.keys() or int(frameid[0]) != int(imagedir):
+            track3d=None
+        else:
+            track3d = track3ds[int(frameid[1])] # 获得相应帧3dtracking的结果
 
         objects_pred = None
-        if args.pred:
+        track_pred = None
+        if args.pred:       #when -p
             # if not dataset.isexist_pred_objects(data_idx):
             #    continue
-            objects_pred = dataset.get_pred_objects(data_idx)
+            #objects_pred = dataset.get_pred_objects(data_idx)
+            objects_pred = objects3d # 获得相应帧3ddetection的结果
             if objects_pred == None:
-                continue
+                print('current frame do not have detection results')
         if objects_pred == None:
             print("no pred file")
             # objects_pred[0].print_object()
+        if args.show_tracking:  #when --show_tracking
+            track_pred=track3d
+            if track_pred==None:
+                print('current frame do not have tracking results')
+        if track_pred == None:
+            print("do not load tracking result,if you want to show trackingresults,please use --show_tracking command ")
+
+
 
         n_vec = 4
         if args.pc_label:
@@ -760,16 +852,17 @@ def dataset_viz(root_dir, args):
                 print("=== {} object ===".format(n_obj + 1))
                 obj.print_object()
                 n_obj += 1
-
+        print('the current frame is %s' % trainvalid)
         # Draw 3d box in LiDAR point cloud
         if args.show_lidar_topview_with_boxes:
             # Draw lidar top view
-            show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred)
+            show_lidar_topview_with_boxes(pc_velo, objects, calib, objects_pred,track_pred)
 
         # show_image_with_boxes_3type(img, objects, calib, objects2d, data_idx, objects_pred)
         if args.show_image_with_boxes:
             # Draw 2d and 3d boxes on image
-            show_image_with_boxes(img, objects, calib, True, depth)
+            #show_image_with_boxes(img, objects, calib, True, depth)# objects is gt
+            show_image_with_boxes(img, objects_pred, calib, show3d=True, depth=depth,track_pred=track_pred) #show3d 是否显示tracking结果
         if args.show_lidar_with_depth:
             # Draw 3d box in LiDAR point cloud
             show_lidar_with_depth(
@@ -792,11 +885,18 @@ def dataset_viz(root_dir, args):
         if args.show_lidar_on_image:
             # Show LiDAR points on image.
             show_lidar_on_image(pc_velo[:, 0:3], img, calib, img_width, img_height)
-        input_str = raw_input()
 
-        mlab.clf()
-        if input_str == "killall":
-            break
+        if timemid==beginid[int(imagedir)]:
+            input_str = raw_input() #first input enter  if want \enter 假如想每次按键进行则用它
+
+        cv2.waitKey(timeintervel) #ly maybe 50ms show the bb
+
+
+
+        #mlab.clf()#图像控制函数mlab，清空当前图像 mlab.clf(figure=None)  感觉没用
+
+        # if input_str == "killall":
+        #     break
 
 
 def depth_to_lidar_format(root_dir, args):
@@ -829,18 +929,34 @@ def depth_to_lidar_format(root_dir, args):
         input_str = raw_input()
 
 
-def read_det_file(det_filename):
-    """ Parse lines in 2D detection output files """
+def read_det_file(det_filename,type='detection'):
+    #####""" Parse lines in 2D detection output files """
+    """ Parse lines in 3D detection output files """
     det_id2str = {1: "Pedestrian", 2: "Car", 3: "Cyclist"}
     objects = {}
     with open(det_filename, "r") as f:
-        for line in f.readlines():
-            obj = utils.Object2d(line.rstrip())
-            if obj.img_name not in objects.keys():
-                objects[obj.img_name] = []
-            objects[obj.img_name].append(obj)
-        # objects = [utils.Object2d(line.rstrip()) for line in f.readlines()]
-
+        if type=='detection':
+            for line in f.readlines():
+                #obj = utils.Object2d(line.rstrip())
+                obj = utils.Object_result_3d(line.rstrip())
+                # if obj.img_name not in objects.keys():
+                #     objects[obj.img_name] = []
+                # objects[obj.img_name].append(obj)
+                if obj.image_id not in objects.keys(): #ly
+                    objects[obj.image_id] = []
+                objects[obj.image_id].append(obj)
+            # objects = [utils.Object2d(line.rstrip()) for line in f.readlines()]
+        elif type=='tracking':
+            for line in f.readlines():
+                #obj = utils.Object2d(line.rstrip())
+                obj = utils.tracking3d(line.rstrip())
+                # if obj.img_name not in objects.keys():
+                #     objects[obj.img_name] = []
+                # objects[obj.img_name].append(obj)
+                if obj.image_id not in objects.keys(): #ly
+                    objects[obj.image_id] = []
+                objects[obj.image_id].append(obj)
+            # objects = [utils.Object2d(line.rstrip()) for line in f.readlines()]
     return objects
 
 
@@ -862,7 +978,7 @@ if __name__ == "__main__":
         "--ind",
         type=int,
         default=0,
-        metavar="N",
+        metavar=0,
         help="input  (default: data/object)",
     )
     parser.add_argument(
@@ -935,6 +1051,31 @@ if __name__ == "__main__":
         action="store_true",
         help="show lidar topview",
     )
+    parser.add_argument(
+        "--group",
+        type=int,
+        default=0000,
+        metavar="0000",
+        help="input  (input which group,default=0000)",
+    )
+    parser.add_argument(
+        "--detectdir",
+        type=str,
+        default='saresult_val',
+        metavar="saresult_val",
+        help="input  (input from which dir from ./results,default='saresult_val')",
+    )
+    parser.add_argument(
+        "--show_tracking",action="store_true", help="show tracking results,now only show on lidarBEV"
+    )
+    parser.add_argument(
+        "--trackdir",
+        type=str,
+        default=None,
+        metavar="carsassd_tra_val",
+        help="input  (input tracking results (follow ab3d output format) from which dir from ./results/,default=None)",
+    )
+
     args = parser.parse_args()
     if args.pred:
         assert os.path.exists(args.dir + "/" + args.split + "/pred")
