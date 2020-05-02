@@ -808,7 +808,12 @@ def draw_projected_box3d(image, qs, color=(0, 255, 0), thickness=2):
           |/         |/
           6 -------- 7
     """
+
+    # print(qs)  #ly buchong
+    # if qs.all()==None:
+    #     print('is None')
     qs = qs.astype(np.int32)
+
     for k in range(0, 4):
         # Ref: http://docs.enthought.com/mayavi/mayavi/auto/mlab_helper_functions.html
         i, j = k, (k + 1) % 4

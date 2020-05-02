@@ -60,7 +60,8 @@ show detection and tracking results bbox/gt on lidar topview only
 ```
 $ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis -p --show_tracking --detectdir saresult_val --trackdir carsassd_tra_val
 ```
-show detection and tracking results bbox/gt on image only    but if detection results have some problems ,maybe raise some problems,if you could solve this,please contect me for my email!
+show detection and tracking results bbox/gt on image only    but if detection results have some problems ,maybe raise some problems,if you could solve this,please contect me for my email! I have fixed it,
+if still has problems, please call me!
 
 ```
 $ python kitti_object.py --img_fov --const_box --vis --show_image_with_boxes -p --show_tracking --detectdir saresult_val --trackdir carsassd_tra_val --group 0003

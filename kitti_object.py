@@ -215,14 +215,26 @@ def show_image_with_boxes(img, objects=None, calib=None, show3d=True, depth=None
             #     2,
             # )
             box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
-            img1 = utils.draw_projected_box3d(img1, box3d_pts_2d)
+            try:                     #判断读到的结果数据是否有问题
+                box3d_pts_2d.any()
+            except:                 # 不用抛出错误，有错跳出本次循环即可，加上错误类型时会抛出错误
+                continue
+            else:
+                img1 = utils.draw_projected_box3d(img1, box3d_pts_2d)
+
     if track_pred is not None:# tracking results
         for obj in track_pred:
             box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
-            img2 = utils.draw_projected_box3d(img2, box3d_pts_2d)
+            #print(box3d_pts_2d)
+            try:                     #判断读到的结果数据是否有问题
+                box3d_pts_2d.any()
+            except:                 # 不用抛出错误，有错跳出本次循环即可，加上错误类型时会抛出错误
+                continue
+            else:
+                img2 = utils.draw_projected_box3d(img2, box3d_pts_2d)
 
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(img2,'trackid:%d'%obj.trackid, (int((obj.xmin+obj.xmax)/2.1), int(obj.ymin-10)), font, 0.5, (0, 255, 0), 1)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(img2,'trackid:%d'%obj.trackid, (int((obj.xmin+obj.xmax)/2.1), int(obj.ymin-10)), font, 0.5, (0, 255, 0), 1)
                         #画trackid 绘制的文字，位置，字型，字体大小，文字颜色，线型
 
 
@@ -235,8 +247,9 @@ def show_image_with_boxes(img, objects=None, calib=None, show3d=True, depth=None
         # img3 = utils.draw_projected_box3d(img3, box3d_pts_32d)
     # print("img1:", img1.shape)
     #cv2.imshow("2dbox", img1)
-    cv2.namedWindow("detection results", cv2.WINDOW_FREERATIO)  # 可鼠标调节自适应比例
+
     cv2.namedWindow("tracking results", cv2.WINDOW_FREERATIO)  # 可鼠标调节自适应比例
+    cv2.namedWindow("detection results", cv2.WINDOW_FREERATIO)  # 可鼠标调节自适应比例
     cv2.imshow("detection results", img1)
     # print("img3:",img3.shape)
     # Image.fromarray(img3).show()
@@ -776,7 +789,7 @@ def dataset_viz(root_dir, args):
         timemid=data_idx
 
         if args.ind > 0:
-            data_idx = args.ind  #从设定的那帧开始共8008帧
+            data_idx = args.ind  #从设定的那帧开始共8008帧  第几行
         trainvalid=linecache.getline('./data/trainval.txt', data_idx+1)#ly
 
         data_idx=trainvalid.replace('\n','')  #为了索引相关的点云和图像文件
