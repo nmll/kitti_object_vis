@@ -1,7 +1,7 @@
 # KITTI Object data transformation and visualization
 ## Dataset
 
-Download the data (calib, image\_2, label\_2, velodyne) from [Kitti Object trackin Dataset](http://www.cvlibs.net/datasets/kitti/eval_tracking.php) and place it in your data folder at `object`,
+Download the data (calib, image\_2, label\_2, velodyne) from [Kitti Object tracking Dataset](http://www.cvlibs.net/datasets/kitti/eval_tracking.php) and place it in your data folder at `object`,
 before use this code,you need to convert kittitrackingdataset to kittidetection datasets format.Follow this：https://github.com/nmll/tools
 after converting dataset format,change the filename 'object_tracking' to 'object'
 The folder structure is as following:   you can be not downloaded testing dataset
