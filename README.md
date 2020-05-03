@@ -1,10 +1,10 @@
 # KITTI Object data transformation and visualization
 ## Dataset
 
-Download the data (calib, image\_2, label\_2, velodyne) from [Kitti Object trackin Dataset](http://www.cvlibs.net/datasets/kitti/eval_tracking.php) and place it in your data folder at `kitti/object`
+Download the data (calib, image\_2, label\_2, velodyne) from [Kitti Object trackin Dataset](http://www.cvlibs.net/datasets/kitti/eval_tracking.php) and place it in your data folder at `object`,
 before use this code,you need to convert kittitrackingdataset to kittidetection datasets format.Follow this：https://github.com/nmll/tools
 after converting dataset format,change the filename 'object_tracking' to 'object'
-The folder structure is as following:
+The folder structure is as following:   you can be not downloaded testing dataset
 ```
 ./data
    object
@@ -32,39 +32,39 @@ pip install mayavi vtk pillow
 conda install mayavi vtk pillow
 ```
 
-## note
-2020.5.1 can show 3Ddetection results and 3Dtracking results on image and show BEV detection/tracking/gt bbox on lidar BEV
+## note!!!
+2020.5.1 can show 3Ddetection/3Dtracking results on image and show BEV detection/tracking/gt bbox on lidar BEV
 
 
 This is forked from https://github.com/kuixu/kitti_object_vis by me,this is for kittitrackingdataset format visualization
-you can change the fps at raw 28 in this code
+you can change the fps at raw 28 in this code but only when use 2dgt,3dgt on image usefully
 you could read next raw usage firstly
 
 show detection bbox/gt on lidar topview and 2dgt,3dgt on image
 
 ```
-$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis --show_image_with_boxes -p --detectdir saresult_val
+$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis --show_image_with_boxes -p --detectdir car_sassd_det_val
 ```
 show detection bbox/gt on lidar topview only
 
 ```
-$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis  -p --detectdir saresult_val
+$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis  -p --detectdir car_sassd_det_val
 ```
 for example show detection bbox/gt on lidar topview and 2d3dgt on image with 0012group default is 0000group
 ```
-$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis --show_image_with_boxes -p --detectdir saresult_val --group 0012
+$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis --show_image_with_boxes -p --detectdir car_sassd_det_val --group 0012
 ```
 
 show detection and tracking results bbox/gt on lidar topview only
 
 ```
-$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis -p --show_tracking --detectdir saresult_val --trackdir carsassd_tra_val
+$ python kitti_object.py --show_lidar_topview_with_boxes --img_fov --const_box --vis -p --show_tracking --detectdir car_sassd_det_val --trackdir car_sassd_tra_val
 ```
 show detection and tracking results bbox/gt on image only    but if detection results have some problems ,maybe raise some problems,if you could solve this,please contect me for my email! I have fixed it,
 if still has problems, please call me!
 
 ```
-$ python kitti_object.py --img_fov --const_box --vis --show_image_with_boxes -p --show_tracking --detectdir saresult_val --trackdir carsassd_tra_val --group 0003
+$ python kitti_object.py --img_fov --const_box --vis --show_image_with_boxes -p --show_tracking --detectdir car_sassd_det_val --trackdir car_sassd_tra_val --group 0003
 ```
 
 
@@ -78,6 +78,35 @@ can used on windows by anaconda
 --show_tracking    show tracking results,now only show on lidarBEV
 --trackdir  input tracking results (follow ab3d output format) from which dir from ./results/,default=None
 ```
+
+## Demo
+#### tracking results on camera image
+<img src="./imgs/tracking.png" alt="3D tracking boxes LiDar data on Camera image" align="center" />
+
+#### tracking results on lidarBEV
+<img src="./imgs/lidar_BEV.png" alt="3D tracking boxes LiDar data on Camera image" align="center" />
+Credit: @liyao
+
+#### 2D, 3D boxes and LiDar data on Camera image
+<img src="./imgs/rgb.png" alt="2D, 3D boxes LiDar data on Camera image" align="center" />
+<img src="./imgs/lidar-label.png" alt="boxes with class label" align="center" />
+Credit: @yuanzhenxun
+
+#### LiDar birdview and point cloud (3D)
+<img src="./imgs/lidar.png" alt="LiDar point cloud and birdview" align="center" />
+
+## Show Predicted Results
+
+Firstly, map KITTI official formated results into data directory
+```
+./map_pred.sh /path/to/results
+```
+
+```python
+python kitti_object.py -p
+```
+<img src="./imgs/pred.png" alt="Show Predicted Results" align="center" />
+
 
 ####below this is origin usage,for reference
 ## Visualization
@@ -155,27 +184,7 @@ Show LiDAR with label (5 vector)
 $ python kitti_object.py --show_lidar_with_depth --img_fov --const_box --vis --pc_label
 ```
 
-## Demo
 
-#### 2D, 3D boxes and LiDar data on Camera image
-<img src="./imgs/rgb.png" alt="2D, 3D boxes LiDar data on Camera image" align="center" />
-<img src="./imgs/lidar-label.png" alt="boxes with class label" align="center" />
-Credit: @yuanzhenxun
-
-#### LiDar birdview and point cloud (3D)
-<img src="./imgs/lidar.png" alt="LiDar point cloud and birdview" align="center" />
-
-## Show Predicted Results
-
-Firstly, map KITTI official formated results into data directory
-```
-./map_pred.sh /path/to/results
-```
-
-```python
-python kitti_object.py -p
-```
-<img src="./imgs/pred.png" alt="Show Predicted Results" align="center" />
 
 
 ## Acknowlegement

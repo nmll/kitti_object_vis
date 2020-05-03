@@ -218,6 +218,7 @@ def show_image_with_boxes(img, objects=None, calib=None, show3d=True, depth=None
             try:                     #判断读到的结果数据是否有问题
                 box3d_pts_2d.any()
             except:                 # 不用抛出错误，有错跳出本次循环即可，加上错误类型时会抛出错误
+                print('detection results hanve some problems!')
                 continue
             else:
                 img1 = utils.draw_projected_box3d(img1, box3d_pts_2d)
@@ -229,6 +230,7 @@ def show_image_with_boxes(img, objects=None, calib=None, show3d=True, depth=None
             try:                     #判断读到的结果数据是否有问题
                 box3d_pts_2d.any()
             except:                 # 不用抛出错误，有错跳出本次循环即可，加上错误类型时会抛出错误
+                print('tracking results hanve some problems!')
                 continue
             else:
                 img2 = utils.draw_projected_box3d(img2, box3d_pts_2d)
@@ -755,14 +757,14 @@ def dataset_viz(root_dir, args):
     ## load 2d detection results    or 3D results
     #objects2ds = read_det_file("box2d.list")
     imagedir = '0000'  # imagedir 第几组 default 0000
-    argdetectdir = 'saresult_val' #which detection result file name,default saresult_val
-    beginid={0000:0,1:154,2:601,3:834,4:978,5:1292,6:1589,7:1859,8:2659,9:3049,10:3852,11:4146,12:4519,13:4597,14:4937,15:5034,16:5419,17:5628,18:5773,19:6112,20:7171}
+    argdetectdir = 'car_sassd_det_val' #which detection result file name,default saresult_val
+    beginid={0000:0,1:154,2:601,3:834,4:978,5:1292,6:1589,7:1859,8:2659,9:3049,10:3852,11:4146,12:4519,13:4597,14:4937,15:5044,16:5419,17:5628,18:5773,19:6112,20:7171}
 
     if args.group:
         imagedir =  trackdirid[args.group] # imagedir 第几组
     if args.detectdir:
         argdetectdir=args.detectdir
-        assert os.path.exists("./results/%s/%s.txt"%(argdetectdir,imagedir))== True, 'detection dir does not exit!'
+        assert os.path.exists("./results/%s/%s.txt"%(argdetectdir,imagedir))== True, 'detection dir does not exist!'
         objects3ds = read_det_file("./results/%s/%s.txt"%(argdetectdir,imagedir),type='detection')#sassd 在tracking 数据集探测结果第imagedir组
     else:
         objects3ds=None
@@ -770,7 +772,7 @@ def dataset_viz(root_dir, args):
         if args.trackdir is None:
             raise Exception("you need to assign --trackdir with your tarcking results!")
         trackdir=args.trackdir
-        assert os.path.exists("./results/%s/data/%s.txt"%(trackdir,imagedir))==True,'tracking dir does not exit!'
+        assert os.path.exists("./results/%s/data/%s.txt"%(trackdir,imagedir))==True,'tracking dir does not exist!'
         track3ds = read_det_file("./results/%s/data/%s.txt"%(trackdir,imagedir),type='tracking')#sassd 在tracking 数据集tracking结果第imagedir组
     else:
         track3ds=None

@@ -113,7 +113,7 @@ class Object_result_3d(object):
     """ 3d object detection results   only for tracking format"""
 
     def __init__(self, label_file_line):
-        det_id2str = {1: "Pedestrian", 2: "Car", 3: "Cyclist"}
+        det_id2str = {1: "Pedestrian", 2: "Car", 3: "Cyclist",4:'Tram',5:'Misc',6:'DontCare'}
         data = label_file_line.split(",")
         data[0:] = [float(x) for x in data[0:]]
 
